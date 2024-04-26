@@ -571,10 +571,450 @@ HAVING
  ORDER BY JOB
 
  ' -- 3. GROUPING SETS '
+/*  -- use the SQL Server GROUPING SETS to generate multiple grouping sets.
+ A grouping set is a group of columns by which you group. Typically, a single query with an 
+ aggregate defines a single grouping set.
+	
+EX: SELECT
+    b.brand_name AS brand,
+    c.category_name AS category,
+    p.model_year,
+    round(
+        SUM (
+            quantity * i.list_price * (1 - discount)
+        ),
+        0
+    ) sales INTO sales.sales_summary
+FROM
+    sales.order_items i
+INNER JOIN production.products p ON p.product_id = i.product_id
+INNER JOIN production.brands b ON b.brand_id = p.brand_id
+INNER JOIN production.categories c ON c.category_id = p.category_id
+GROUP BY
+    b.brand_name,
+    c.category_name,
+    p.model_year
+ORDER BY
+    b.brand_name,
+    c.category_name,
+    p.model_year;
+
+SELECT * FROM  sales.sales_summary
+ORDER BY brand, category, model_year;
+
+EX-2: The following query defines a grouping set that includes brand and category
+which is denoted as (brand, category). The query returns the sales amount grouped by brand and category:
+SELECT
+    brand,
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    brand,
+    category
+ORDER BY
+    brand,
+    category;
+
+EX-3: The following query returns the sales amount by brand. It defines a grouping set (brand):
+SELECT brand, SUM (sales) sales FROM sales.sales_summary
+GROUP BY brand ORDER BY brand;
+
+EX-4: The following query defines an empty grouping set (). It returns the sales amount for all brands and categories.
+SELECT SUM (sales) sales FROM sales.sales_summary;
+
+The four queries above return four result sets with four grouping sets:
+
+(brand, category)
+(brand)
+(category)
+()
+
+
+Home » SQL Server GROUPING SETS
+
+SQL Server GROUPING SETS
+Summary: in this tutorial, you will learn how to use the SQL Server GROUPING SETS to generate multiple grouping sets.
+
+Setup a sales summary table
+Let’s create a new table named sales.sales_summary for the demonstration.
+
+SELECT
+    b.brand_name AS brand,
+    c.category_name AS category,
+    p.model_year,
+    round(
+        SUM (
+            quantity * i.list_price * (1 - discount)
+        ),
+        0
+    ) sales INTO sales.sales_summary
+FROM
+    sales.order_items i
+INNER JOIN production.products p ON p.product_id = i.product_id
+INNER JOIN production.brands b ON b.brand_id = p.brand_id
+INNER JOIN production.categories c ON c.category_id = p.category_id
+GROUP BY
+    b.brand_name,
+    c.category_name,
+    p.model_year
+ORDER BY
+    b.brand_name,
+    c.category_name,
+    p.model_year;
+Code language: SQL (Structured Query Language) (sql)
+In this query, we retrieve the sales amount data by brand and category and populate it into the sales.sales_summary table.
+
+The following query returns data from the sales.sales_summary table:
+
+SELECT
+	*
+FROM
+	sales.sales_summary
+ORDER BY
+	brand,
+	category,
+	model_year;
+Code language: SQL (Structured Query Language) (sql)
+SQL Server GROUPING SETS - UNION ALL
+Getting started with SQL Server GROUPING SETS
+By definition, a grouping set is a group of columns by which you group. Typically, a single query with an aggregate defines a single grouping set.
+
+For example, the following query defines a grouping set that includes brand and category which is denoted as (brand, category). The query returns the sales amount grouped by brand and category:
+
+SELECT
+    brand,
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    brand,
+    category
+ORDER BY
+    brand,
+    category;
+Code language: SQL (Structured Query Language) (sql)
+
+The following query returns the sales amount by brand. It defines a grouping set (brand):
+
+SELECT
+    brand,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    brand
+ORDER BY
+    brand;
+Code language: SQL (Structured Query Language) (sql)
+SQL Server GROUPING SETS by brand
+The following query returns the sales amount by category. It defines a grouping set (category):
+
+SELECT
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    category
+ORDER BY
+    category;
+Code language: SQL (Structured Query Language) (sql)
+SQL Server GROUPING SETS by brand
+The following query defines an empty grouping set (). It returns the sales amount for all brands and categories.
+
+SELECT
+    SUM (sales) sales
+FROM
+    sales.sales_summary;
+Code language: SQL (Structured Query Language) (sql)
+
+The four queries above return four result sets with four grouping sets:
+
+(brand, category)
+(brand)
+(category)
+()
+
+To get a unified result set with the aggregated data for all grouping sets, you can use the UNION ALL operator.
+
+Because UNION ALL operator requires all result sets to have the same number of columns, 
+you need to add NULL to the select list of the queries like this:
+
+SELECT brand, category, SUM (sales) sales FROM sales.sales_summary
+GROUP BY brand, category
+UNION ALL
+SELECT brand, NULL, SUM (sales) sales FROM sales.sales_summary
+GROUP BY brand
+UNION ALL
+SELECT NULL,  category, SUM (sales) sales FROM sales.sales_summary
+GROUP BY category
+UNION ALL
+SELECT NULL, NULL, SUM (sales) FROM sales.sales_summary
+ORDER BY brand, category;
+
+The query generated a single result with the aggregates for all grouping sets as we expected.
+
+However, it has two major problems:
+
+The query is quite lengthy.
+The query is slow because the SQL Server needs to execute four subqueries and combine the result sets into a single one.
+To fix these problems, SQL Server provides a subclause of the GROUP BY clause called GROUPING SETS.
+
+The GROUPING SETS defines multiple grouping sets in the same query. The following shows the general syntax of the GROUPING SETS:
+
+SELECT
+    column1,
+    column2,
+    aggregate_function (column3)
+FROM
+    table_name
+GROUP BY
+    GROUPING SETS (
+        (column1, column2),
+        (column1),
+        (column2),
+        ()
+);
+Code language: SQL (Structured Query Language) (sql)
+This query creates four grouping sets:
+
+(column1,column2)
+(column1)
+(column2)
+()
+
+EX-5:
+*/
 
  ' -- 4. CUBE '
+ /* Use the SQL Server CUBE to generate multiple grouping sets.
+
+ Grouping sets specify groupings of data in a single query. For example, the following query defines 
+ a single grouping set represented as (brand):
+SELECT 
+    brand, 
+    SUM(sales)
+FROM 
+    sales.sales_summary
+GROUP BY 
+    brand;
+
+The CUBE is a subclause of the GROUP BY clause that allows you to generate multiple grouping sets. 
+
+The following illustrates the general syntax of the CUBE:
+SELECT
+    d1,
+    d2,
+    d3,
+    aggregate_function (c4)
+FROM
+    table_name
+GROUP BY
+    CUBE (d1, d2, d3);
+
+In this syntax, the CUBE generates all possible grouping sets based on the dimension columns d1, d2, and d3 that you specify in the CUBE clause.
+
+The above query returns the same result set as the following query, which uses the  GROUPING SETS:
+
+SELECT
+    d1,
+    d2,
+    d3,
+    aggregate_function (c4)
+FROM
+    table_name
+GROUP BY
+    GROUPING SETS (
+        (d1,d2,d3), 
+        (d1,d2),
+        (d1,d3),
+        (d2,d3),
+        (d1),
+        (d2),
+        (d3), 
+        ()
+     );
+Code language: SQL (Structured Query Language) (sql)
+If you have N dimension columns specified in the CUBE, you will have 2N grouping sets.
+
+It is possible to reduce the number of grouping sets by using the CUBE partially as shown in the following query:
+
+SELECT
+    d1,
+    d2,
+    d3,
+    aggregate_function (c4)
+FROM
+    table_name
+GROUP BY
+    d1,
+    CUBE (d2, d3);
+Code language: SQL (Structured Query Language) (sql)
+In this case, the query generates four grouping sets because there are only two dimension columns specified in the CUBE.
+
+SQL Server CUBE examples
+The following statement uses the CUBE to generate four grouping sets:
+
+(brand, category)
+(brand)
+(category)
+()
+SELECT
+    brand,
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    CUBE(brand, category);
+
+In this example, we have two dimension columns specified in the CUBE clause, therefore, we have a total of four grouping sets.
+
+The following example illustrates how to perform a partial CUBE to reduce the number of grouping sets generated by the query:
+
+SELECT
+    brand,
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    brand,
+    CUBE(category);
+
+ */
 	
  ' -- 5. ROLLUP '
+ /* Use the SQL Server ROLLUP to generate multiple grouping sets.
+ The SQL Server ROLLUP is a subclause of the GROUP BY clause which provides a shorthand for defining multiple grouping sets.
+
+Unlike the CUBE subclause, ROLLUP does not create all possible grouping sets based on the dimension columns; the CUBE makes a subset of those.
+
+When generating the grouping sets, ROLLUP assumes a hierarchy among the dimension columns and only generates grouping sets based on this hierarchy.
+
+The ROLLUP is often used to generate subtotals and totals for reporting purposes.
+
+Let’s consider an example. The following CUBE (d1,d2,d3) defines eight possible grouping sets:
+
+(d1, d2, d3)
+(d1, d2)
+(d2, d3)
+(d1, d3)
+(d1)
+(d2)
+(d3)
+()
+
+And the ROLLUP(d1,d2,d3) creates only four grouping sets, assuming the hierarchy d1 > d2 > d3, as follows:
+
+(d1, d2, d3)
+(d1, d2)
+(d1)
+()
+
+The ROLLUP is commonly used to calculate the aggregates of hierarchical data such as sales by year > quarter > month.
+
+SQL Server ROLLUP syntax
+The general syntax of the SQL Server ROLLUP is as follows:
+
+SELECT
+    d1,
+    d2,
+    d3,
+    aggregate_function(c4)
+FROM
+    table_name
+GROUP BY
+    ROLLUP (d1, d2, d3);
+
+In this syntax, d1, d2, and d3 are dimension columns. The statement will calculate the aggregation of values 
+in the column c4 based on the hierarchy d1 > d2 > d3.
+
+You can also do a partial roll-up to reduce the subtotals generated by using the following syntax:
+
+SELECT
+    d1,
+    d2,
+    d3,
+    aggregate_function(c4)
+FROM
+    table_name
+GROUP BY
+    d1, 
+    ROLLUP (d2, d3);
+
+SQL Server ROLLUP examples
+We will reuse the sales.sales_summary table created in the GROUPING SETS tutorial for the demonstration. 
+If you have not created the sales.sales_summary table, you can use the following statement to create it.
+
+SELECT
+    b.brand_name AS brand,
+    c.category_name AS category,
+    p.model_year,
+    round(
+        SUM (
+            quantity * i.list_price * (1 - discount)
+        ),
+        0
+    ) sales INTO sales.sales_summary
+FROM
+    sales.order_items i
+INNER JOIN production.products p ON p.product_id = i.product_id
+INNER JOIN production.brands b ON b.brand_id = p.brand_id
+INNER JOIN production.categories c ON c.category_id = p.category_id
+GROUP BY
+    b.brand_name,
+    c.category_name,
+    p.model_year
+ORDER BY
+    b.brand_name,
+    c.category_name,
+    p.model_year;
+
+The following query uses the ROLLUP to calculate the sales amount by brand (subtotal) and both brand and category (total).
+
+SELECT
+    brand,
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    ROLLUP(brand, category);
+
+SQL Server ROLLUP example
+In this example, the query assumes that there is a hierarchy between brand and category, which is the brand > category.
+
+Note that if you change the order of brand and category, the result will be different as shown in the following query:
+
+SELECT
+    category,
+    brand,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    ROLLUP (category, brand);
+Code language: SQL (Structured Query Language) (sql)
+In this example, the hierarchy is the brand > segment:
+
+SQL Server ROLLUP example 2
+The following statement shows how to perform a partial roll-up:
+
+SELECT
+    brand,
+    category,
+    SUM (sales) sales
+FROM
+    sales.sales_summary
+GROUP BY
+    brand,
+    ROLLUP (category);
+
+ */
 
 
 ' ------- SECTION-6: END ----------------- '
