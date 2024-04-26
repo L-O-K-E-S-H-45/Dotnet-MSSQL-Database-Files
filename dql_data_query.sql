@@ -49,7 +49,7 @@ VALUES (7369,'SMITH','CLERK',7902,'1980-12-17',800,300,20),
 	(7902,'FORD','ANALYST',7566,'1981-12-03',3000,NULL,20),
 	(7934,'MILLER','CLERK',7782,'1982-JAN-23',1300,NULL,10)
 
--- ============ SECTION-1 - Querying data =======================================================
+' ============ SECTION-1 - Querying data ======================================================= '
 SELECT * FROM DEPARTMENT
 SELECT * FROM EMPLOYEES
 
@@ -109,9 +109,9 @@ GROUP BY JOB
 HAVING COUNT(*) > 2
 ORDER BY JOB
 
----- END
+ ' ---- SECTION-1: END --------  '
 
--- ============ SECTION-2: Sorting data =======================================================
+' ============ SECTION-2: Sorting data ================================================ '
 -- ORDER BY CLAUSE
 SELECT * FROM dbo.EMPLOYEES
 WHERE JOB = 'CLERK'
@@ -147,10 +147,10 @@ ORDER BY LEN(EMP_NAME)
 SELECT JOB, DEPT_NO FROM EMPLOYEES
 ORDER BY 1, 2
 
--- END
+' ---- SECTION-2: END --------  '
 
--- ============ SECTION-3: Limiting rows =======================================================
--- 1. OFFSET FETCH 
+' ============ SECTION-3: Limiting rows ========================================= '
+ ' -- 1. OFFSET FETCH '
 /*
 -- AFTER SELECT OR OTHER CLAUESE ---
 ORDER BY column_list [ASC |DESC]
@@ -194,7 +194,7 @@ ORDER BY JOB, DEPT_NO
 OFFSET 0 ROWS
 FETCH NEXT 4 ROWS ONLY
 
--- 3. SELECT TOP
+' -- 2. SELECT TOP '
 /*
 SELECT TOP (expression) [PERCENT]
     [WITH TIES]
@@ -229,10 +229,10 @@ ORDER BY SAL
 SELECT TOP 4 WITH TIES * FROM EMPLOYEES
 ORDER BY SAL DESC
 
--- END
+' ---- SECTION-3: END --------  '
 
 ' ============ SECTION-4: Filtering data ======================================================= '
--- 1. DISTINCT
+' -- 1. DISTINCT '
 SELECT JOB, DEPT_NO FROM EMPLOYEES
 
 -- Using the SELECT DISTINCT with one column
@@ -265,7 +265,7 @@ SELECT JOB, DEPT_NO, HIREDATE FROM EMPLOYEES
 GROUP BY JOB,DEPT_NO,HIREDATE
 ORDER BY JOB,DEPT_NO,HIREDATE
 
--- 2. WHERE Clause
+' -- 2. WHERE Clause '
 /*
 Note that SQL Server uses three-valued predicate logic where a logical expression can evaluate to TRUE, FALSE, or UNKNOWN. 
 The WHERE clause will not return any row that causes the predicate to evaluate to FALSE or UNKNOWN.
@@ -315,7 +315,8 @@ Therefore, the query retrieves the EMPLOYEES with the JOB = 'CLERK' and SAL > 10
 SELECT DEPT_NO, JOB, SAL FROM EMPLOYEES 
 WHERE (JOB = 'SALESMAN' OR JOB = 'CLERK') AND SAL > 1000 --O/P: 6 ROWS
 
--- 4. OR Operator => By default, SQL Server evaluates the OR operators after the AND operators within the same expression. 
+' -- 4. OR Operator ' 
+-- => By default, SQL Server evaluates the OR operators after the AND operators within the same expression. 
 -- But you can use parentheses () to change the order of evaluation.
 SELECT EMP_NAME, SAL FROM EMPLOYEES 
 WHERE SAL < 1500 OR SAL > 2500
@@ -328,7 +329,7 @@ SELECT EMP_NAME, JOB FROM EMPLOYEES
 WHERE JOB IN ('PRESIDENT', 'MANAGER', 'CLERK')
 ORDER BY JOB
 
--- 5. IN Operator
+' -- 5. IN Operator '
 -- The syntax of the SQL Server IN operator: column | expression IN ( v1, v2, v3, ...)
 -- To negate the IN operator, you use the NOT IN operator as follows: column | expression NOT IN ( v1, v2, v3, ...)
 -- In addition to a list of values, you can use a subquery that returns a list of values with the IN operator as shown below:
@@ -353,11 +354,11 @@ SELECT * FROM EMPLOYEES
 WHERE DEPT_NO IN (SELECT DEPT_NO FROM DEPARTMENT
 				WHERE DEPT_NAME = 'RESEARCH' OR DEPT_LOC= 'NEW YORK')
 
--- 6. BETWEEN OPERATOR
+' -- 6. BETWEEN OPERATOR '
 SELECT DEPT_NO, EMP_NAME, SAL FROM EMPLOYEES  
 WHERE SAL BETWEEN 1500 AND 5000 -- INCLUDES END VALUES
 
--- 7. LIKE Operator
+' -- 7. LIKE Operator '
 /*A pattern may include regular characters and wildcard characters. The LIKE operator is used in the WHERE clause of the 
 SELECT, UPDATE, and DELETE statements to filter rows based on pattern matching.
 The syntax of the LIKE operator: column | expression LIKE pattern [ESCAPE escape_character]
@@ -420,7 +421,8 @@ WHERE comment LIKE '%30!%%' ESCAPE '!';
 SELECT feedback_id, comment FROM feedbacks
 WHERE comment LIKE '%30''%'
 
--- 8. Column & table aliases => SYNTAX: column_name | expression  AS column_alias
+' -- 8. Column & table aliases '
+-- => SYNTAX: column_name | expression  AS column_alias
 --column aliases to change the heading of the query output and 
 -- table alias to improve the readability of a query
 ' Column alias '
@@ -578,7 +580,112 @@ HAVING
 ' ------- SECTION-6: END ----------------- '
 
 ' ============ SECTION-8: Set Operators ======================================================= '
+'-- 1. UNION '
+/* Use the SQL Server UNION to combine the results of two or more queries into a single result set.
+ SYNTAX: query_1 UNION query_2
+ By default, the UNION operator removes all duplicate rows from the result sets. However, if you want to retain the duplicate rows, 
+ you need to specify the ALL keyword is explicitly as shown : query_1 UNION ALL query_2
 
+ The following are requirements for the queries in the syntax above:
+ The number and the order of the columns must be the same in both queries.
+ The data types of the corresponding columns must be the same or compatible.
+*/
+
+SELECT DEPT_NO FROM EMPLOYEES
+UNION
+SELECT DEPT_NO FROM DEPARTMENT
+
+SELECT DEPT_NO FROM EMPLOYEES
+UNION
+SELECT DEPT_NO FROM DEPARTMENT
+
+SELECT DEPT_NO FROM EMPLOYEES
+UNION ALL
+SELECT DEPT_NO FROM DEPARTMENT
+
+SELECT * FROM EMPLOYEES
+
+SELECT EMP_NAME, DEPT_NO FROM EMPLOYEES
+UNION
+SELECT DEPT_NAME , DEPT_NO FROM DEPARTMENT
+
+' UNION WITH WHERE & ORDER BY CLAUSE '
+SELECT EMP_NAME, DEPT_NO FROM EMPLOYEES
+WHERE EMP_NAME LIKE '%A%'
+UNION
+SELECT DEPT_NAME , DEPT_NO FROM DEPARTMENT
+WHERE DEPT_NAME LIKE '%R%'
+
+SELECT EMP_NAME, DEPT_NO FROM EMPLOYEES
+WHERE EMP_NAME LIKE '%A%'
+UNION
+SELECT DEPT_NAME , DEPT_NO FROM DEPARTMENT
+WHERE DEPT_NAME LIKE '%R%'
+ORDER BY DEPT_NO
+
+SELECT EMP_NAME, DEPT_NO FROM EMPLOYEES
+WHERE DEPT_NO = 20
+UNION
+SELECT DEPT_NAME , DEPT_NO FROM DEPARTMENT
+WHERE DEPT_NO = 20
+
+SELECT EMP_NAME, DEPT_NO FROM EMPLOYEES
+UNION ALL
+SELECT DEPT_NAME , DEPT_NO FROM DEPARTMENT
+
+' UNION vs. JOIN '
+/* The join such as INNER JOIN or LEFT JOIN combines columns from two tables 
+while the UNION combines rows from two queries.
+EX: C1ID: 1,2,3 & C2ID: 1,2,3,4 => UNION: ID: 1,2,3,4 & INNER JOIN: C1ID: 2, 3  C2ID: 2, 3
+*/
+
+-- UNION and ORDER BY
+/*SELECT select_list FROM table_1
+UNION
+SELECT select_list FROM table_2
+ORDER BY order_list;
+
+*/
+
+' -- 2. INTERSECT '
+/* The SQL Server INTERSECT combines result sets of two or more queries and returns distinct rows 
+ that are output by both queries.
+ SYNTAX: query_1 INTERSECT query_2
+
+ Similar to the UNION operator, the queries in the syntax above must conform to the following rules:
+ Both queries must have the same number and order of columns.
+ The data type of the corresponding columns must be the same or compatible.
+ EX: T1: 1,2,3 & T2: 2,3,4 => T1INTERSECTT2: 2,3
+*/
+
+SELECT DEPT_NO FROM EMPLOYEES
+INTERSECT
+SELECT DEPT_NO FROM DEPARTMENT
+
+SELECT DEPT_NO FROM EMPLOYEES
+INTERSECT
+SELECT DEPT_NO FROM DEPARTMENT
+ORDER BY DEPT_NO DESC
+
+' -- 3. EXCEPT '
+/* The SQL Server EXCEPT compares the result sets of two queries and returns the distinct rows from the first query 
+ that are not output by the second query. In other words, the EXCEPT subtracts the result set of a query from another.
+ SYNTAX: query_1 EXCEPT query_2
+
+ The following are the rules for combining the result sets of two queries in the above syntax:
+ The number and order of columns must be the same in both queries.
+ The data types of the corresponding columns must be the same or compatible.
+ EX: T1: 1,2,3 & T2: 2,3,4 => T1EXCEPTT2: 1
+*/
+
+SELECT DEPT_NO  FROM DEPARTMENT
+EXCEPT
+SELECT DEPT_NO FROM EMPLOYEES
+
+SELECT DEPT_NO  FROM DEPARTMENT
+EXCEPT
+SELECT DEPT_NO FROM EMPLOYEES
+ORDER BY DEPT_NO
 
 ' ------- SECTION-8: END ----------------- '
 
@@ -635,8 +742,6 @@ DROP TABLE IF EXISTS EMPLOYEES
 
 -- ---------------------------
 
-
-	----------------------------------------------------------
 
 
 
