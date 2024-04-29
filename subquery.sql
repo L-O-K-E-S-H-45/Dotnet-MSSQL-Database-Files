@@ -237,6 +237,8 @@ As you can see, the correlated subquery is executed once for each employee evalu
 */
 
 
+
+
 --  ===============================================================================================
 
 select top 4 * 
