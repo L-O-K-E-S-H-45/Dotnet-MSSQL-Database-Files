@@ -415,6 +415,47 @@ where DIFFERENCE(EMP_NAME,'SMI') = 4
 
 SELECT DIFFERENCE(ISNULL('Hi', ''), ISNULL(NULL, '')) AS SimilarityScore;
 
+create table sales ( 
+	id int primary key identity,
+	price int not null,
+	catagory varchar(100) not null,
+	sold_date date not null  -- order_date
+	);
+
+drop table sales
+
+insert into sales (price,catagory,sold_date) 
+values (15000,'mobile','2024-04-12'),
+		(2000,'mobile','2023-12-20'),
+		(38500,'Laptop','2024-02-10'),
+		(40000,'Laptop','2023-10-23'),
+		(50000,'Laptop','2023-08-15'),
+		(10000,'mobile','2024-06-14')
+
+select * from sales
+
+select *, DATEPART(QUARTER,sold_date), DATEPART(QUARTER,GETDATE()), DATEPART(YEAR, sold_date), DATEPART(YEAR, GETDATE())
+-- ---- or 
+select *, DATEPART(QUARTER,sold_date), DATEPART(QUARTER,GETDATE()), YEAR(sold_date), YEAR(GETDATE()) from sales
+
+select *, DATEDIFF(M,sold_date,GETDATE()) months_diff from sales
+
+-- sales happened in last quarter of the year
+select catagory, sum(price) as total_sales_price from sales
+where YEAR(sold_date) = YEAR(GETDATE())-1 and DATEPART(quarter, sold_date) = 4 
+group by catagory
+
+-- total sales price in last 4 months
+select catagory, sum(price) as total_sales_price from sales
+where DATEDIFF(M,sold_date,GETDATE()) >= 0 and DATEDIFF(M,sold_date,GETDATE()) <= 4
+group by catagory
+
+select *, DATEDIFF(M,sold_date,GETDATE()) months_diff from sales
+
+select catagory, sum(price) as total_sales_price from sales
+where DATEPART(QUARTER, sold_date) = DATEPART(QUARTER, GETDATE()) 
+group by catagory
+
 '
 SQL Server System Functions
 This page provides you with the commonly used system functions in SQL Server that return objects, values, and settings in SQL Server:
@@ -497,6 +538,144 @@ SQRT	Return the square root of a float.
 SQUARE	Return the square of a number.
 TAN	Return the tangent of the specified angle, measured in radians.
 '
+
+
+' ============= USER DEFINED FUNCTIONS ================= '
+
+select CURRENT_USER;
+
+select APP_NAME();
+
+select GETDATE();
+
+DECLARE @FName varchar(50);
+select coalesce(@FName, 'Tom');
+
+DECLARE @FName varchar(50);
+SET @FName = 'Jerry';
+select coalesce(@FName, 'Tom');
+
+' ------- SCALAR FUNCTION '
+/* syntax: 
+	CREATE FUNCTION function_name(Parameters OPTIONAL)
+	RETURNS return_type
+	AS
+	BEGIN
+	Statement 1
+	Statement 2
+	Statement n
+	RETURN return-value
+	END
+*/
+
+create function AddDigits(@num1 int, @num2 int)
+returns int
+as
+begin
+declare @result int;
+set @result = @num1 + @num2;
+return @result;
+end
+
+select dbo.AddDigits(2,5)
+
+create table Students (
+	RollNo int primary key identity,
+	StudentName varchar(50) not null, 
+	);
+
+drop table Students
+
+create table Students_Marks (
+	RollNo int,
+	constraint frk_rollno foreign key(RollNo) references Students(RollNo),
+	Science int not null, 
+	Math int not null, 
+	English int not null
+	);
+
+drop table Students_Marks
+
+insert into Students(StudentName) 
+values ('Tom'),('Smith'),('Allen'),('Scott'),('Jerry'),('Smith'),('Tom'),('Miller'),('Clark')
+
+select * from Students
+
+insert into Students_Marks(RollNo,Science,Math,English) 
+values (1,34,78,54),(2,78,43,87),(3,45,32,78),(4,36,78,32),(5,12,22,67),(6,21,65,43),(7,34,78,65),(8,45,35,76),(9,80,57,65)
+
+select * from Students_Marks
+
+create function GetTotalMarks(@RollNo int)
+returns int 
+as 
+begin
+declare @result int;
+select @result = (Science+Math+English) from Students_Marks where RollNo = @RollNo;
+return @result;
+end
+
+drop function GetTotalMarks
+
+select *, dbo.GetTotalMarks(RollNo) Total_Marks from Students_Marks;
+
+
+create function GetMarksAverage(@RollNo int)
+returns int
+as 
+begin
+declare @result int;
+select @result = (Science+Math+English)/3 from Students_Marks where RollNo = @RollNo;
+return @result;
+end
+
+drop function dbo.GetMarksAverage
+
+select *, dbo.GetTotalMarks(RollNo) Total_Marks, dbo.GetMarksAverage(RollNo) Marks_Average from Students_Marks;
+
+
+' ------- TABLE VALUED FUNCTION '
+
+' 1. INLINE TABLE VALUED FUNCTION '
+
+create function Inline_GetStudents_GreaterThanScore(@TotalMarks int)
+returns Table
+as
+return select *, (Science+Math+English) Total_Marks from Students_Marks where (Science+Math+English) >= @TotalMarks;
+
+drop function Inline_GetStudents_GreaterThanScore;
+
+select *from dbo.Inline_GetStudents_GreaterThanScore(150);
+
+
+' 1. MULTI-STATEMENT TABLE VALUED FUNCTION '
+
+create function MultiStatement_GetStudents(@RollNo int)
+returns @Marks_Sheet Table (stName varchar(50), RollNo int, sci int, math int, eng int, 
+	total_marks int,avg_marks decimal(4,2))
+as
+begin
+declare @stName varchar(50);
+declare @total_marks int;
+declare @avg_marks decimal(4,2);
+
+select @stName = StudentName from Students where RollNo = @RollNo;
+select @total_marks = (Science+Math+English) from Students_Marks where RollNo = @RollNo;
+select @avg_marks = (Science+Math+English)/3 from Students_Marks where RollNo = @RollNo;
+
+insert into @Marks_Sheet(stName,RollNo,sci, math, eng, total_marks,avg_marks) 
+select @stName, @RollNo, Science, Math, English, @total_marks, @avg_marks 
+	from Students_Marks where RollNo = @RollNo;
+
+return
+end
+
+drop function MultiStatement_GetStudents;
+
+select * from dbo.MultiStatement_GetStudents(2);
+
+
+
 
 
 
