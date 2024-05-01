@@ -627,7 +627,384 @@ end
 -- O/P: 1 2 4 5
 
 
----
+'================ Section 2. Handling Exceptions ==================== '
+
+/*
+TRY CATCH – learn how to handle exceptions gracefully in stored procedures.
+RAISERROR – show you how to generate user-defined error messages and return it back to the application using 
+	the same format as the system error.
+THROW – walk you through the steps of raising an exception and transferring the execution to the CATCH block of a 
+	TRY CATCH construct.
+*/
+
+
+' ----- 1. TRY CATCH ----- '
+
+/*
+The TRY CATCH construct allows you to gracefully handle exceptions in SQL Server. To use the TRY CATCH construct, 
+you first place a group of Transact-SQL statements that could cause an exception in a BEGIN TRY...END TRY block,
+Then you use a BEGIN CATCH...END CATCH block immediately after the TRY block: as follows:
+syntax:
+	BEGIN TRY  
+	   -- statements that may cause exceptions
+	END TRY 
+	BEGIN CATCH  
+	   -- statements that handle exception
+	END CATCH  
+
+The CATCH block functions : 
+Inside the CATCH block, you can use the following functions to get the detailed information on the error that occurred:
+
+ERROR_LINE() returns the line number on which the exception occurred.
+ERROR_MESSAGE() returns the complete text of the generated error message.
+ERROR_PROCEDURE() returns the name of the stored procedure or trigger where the error occurred.
+ERROR_NUMBER() returns the number of the error that occurred.
+ERROR_SEVERITY() returns the severity level of the error that occurred.
+ERROR_STATE() returns the state number of the error that occurred.
+
+Note that you only use these functions in the CATCH block. If you use them outside of the CATCH block, 
+	all of these functions will return NULL.
+
+Nested TRY CATCH constructs : 
+You can nest TRY CATCH construct inside another TRY CATCH construct. However, either a TRY block or a CATCH block 
+	can contain a nested TRY CATCH, for example:
+
+	BEGIN TRY
+		--- statements that may cause exceptions
+	END TRY
+	BEGIN CATCH
+		-- statements to handle exception
+		BEGIN TRY
+			--- nested TRY block
+		END TRY
+		BEGIN CATCH
+			--- nested CATCH block
+		END CATCH
+	END CATCH
+
+*/
+
+create proc uspTC_divide(
+	@a decimal,
+	@b decimal,
+	@c decimal Output
+	)
+as
+begin
+	BEGIN TRY
+		set @c = @a / @b;
+	END TRY
+	BEGIN CATCH
+		SELECT
+			ERROR_NUMBER() AS ErrorNumber,
+			ERROR_SEVERITY() AS ErrorSeverity,
+			ERROR_STATE() AS ErrorState,
+			ERROR_PROCEDURE() AS ErrorProcedure,
+			ERROR_MESSAGE() AS ErrorMessage,
+			ERROR_LINE() AS ErrorLine
+	END CATCH
+end;
+GO
+
+declare @Result decimal;
+exec uspTC_divide 10, 2, @Result Output;
+select @Result as Result;
+
+declare @Result decimal;
+exec uspTC_divide 10, 0, @Result Output;
+select @Result as Result;
+
+/*
+SQL Serer TRY CATCH with transactions
+Inside a CATCH block, you can test the state of transactions by using the XACT_STATE() function.
+
+If the XACT_STATE() function returns -1, it means that an uncommittable transaction is pending, 
+	you should issue a ROLLBACK TRANSACTION statement.
+In case the XACT_STATE() function returns 1, it means that a committable transaction is pending. 
+	You can issue a COMMIT TRANSACTION statement in this case.
+If the XACT_STATE() function return 0, it means no transaction is pending, therefore, 
+	you don’t need to take any action.
+It is a good practice to test your transaction state before issuing a COMMIT TRANSACTION or ROLLBACK TRANSACTION 
+	statement in a CATCH block to ensure consistency.
+*/
+
+' Using TRY CATCH with transactions example '
+create schema sales;
+
+CREATE TABLE sales.persons
+(
+    person_id  INT
+    PRIMARY KEY IDENTITY, 
+    first_name NVARCHAR(100) NOT NULL, 
+    last_name  NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE sales.deals
+(
+    deal_id   INT
+    PRIMARY KEY IDENTITY, 
+    person_id INT NOT NULL, 
+    deal_note NVARCHAR(100), 
+    FOREIGN KEY(person_id) REFERENCES sales.persons(
+    person_id)
+);
+
+insert into sales.persons(first_name, last_name)
+values ('John','Doe'), ('Jane','Doe');
+
+select * from sales.persons
+
+insert into sales.deals(person_id, deal_note)
+values (1,'Deal for John Doe');
+
+-- Next, create a new stored procedure named usp_report_error that will be used in a CATCH block to 
+	-- report the detailed information of an error:
+
+CREATE PROC usp_report_error
+AS
+    SELECT   
+        ERROR_NUMBER() AS ErrorNumber  
+        ,ERROR_SEVERITY() AS ErrorSeverity  
+        ,ERROR_STATE() AS ErrorState  
+        ,ERROR_LINE () AS ErrorLine  
+        ,ERROR_PROCEDURE() AS ErrorProcedure  
+        ,ERROR_MESSAGE() AS ErrorMessage;  
+GO
+
+-- Then, develop a new stored procedure that deletes a row from the sales.persons table:
+
+CREATE PROC usp_delete_person(
+	@person_id INT
+	)
+as
+begin
+	BEGIN TRY
+		BEGIN TRANSACTION
+			-- delete the person
+			delete from sales.persons
+			where person_id = @person_id;
+			-- if person delete succeed, commit the transaction
+		COMMIT TRANSACTION
+	END TRY
+	BEGIN CATCH
+
+		-- report exception
+		EXEC usp_report_error;
+
+		-- Test if the transaction is uncommittable.  
+		if (XACT_STATE()) = -1
+		BEGIN
+			PRINT  N'The transaction is in an uncommittable state.' +  
+                    'Rolling back transaction.' 
+			ROLLBACK TRANSACTION;
+		END
+
+		-- Test if the transaction is committable.  
+		if (XACT_STATE()) = 1
+		BEGIN
+			PRINT N'The transaction is committable.' +  
+                'Committing transaction.'  
+			COMMIT TRANSACTION;
+		END
+
+	END CATCH
+end;
+GO
+
+EXEC usp_delete_person 2;
+
+' ----- 2. RAISERROR ----- '
+
+/*
+The RAISERROR statement allows you to generate your own error messages and return these messages back to the 
+	application using the same format as a system error or warning message generated by SQL Server Database Engine. 
+	In addition, the RAISERROR statement allows you to set a specific message id, level of severity, and state 
+	for the error messages.
+
+If you develop a new application, you should use the THROW statement instead.
+
+syntax :
+		RAISERROR ( { message_id | message_text | @local_variable }  
+			{ ,severity ,state }  
+			[ ,argument [ ,...n ] ] )  
+			[ WITH option [ ,...n ] ];
+
+*/
+/*
+message_id : 
+The message_id is a user-defined error message number stored in the sys.messages catalog view.
+
+To add a new user-defined error message number, you use the stored procedure sp_addmessage. A user-defined error 
+	message number should be greater than 50,000. By default, the RAISERROR statement uses the message_id 50,000 
+	for raising an error.
+
+The following statement adds a custom error message to the sys.messages view:
+*/
+
+exec sp_addmessage
+	@msgnum = 500005,
+	@severity = 1,
+	@msgtext = 'A custom eroror message'
+
+select * from sys.messages where message_id = 500005
+
+-- To use this message_id, you execute the RAISEERROR statement as follows:
+RAISERROR ( 500005,1,1)
+
+EXEC sp_dropmessage 
+    @msgnum = 500005; 
+
+'--- message_text -' 
+-- When you specify the message_text, the RAISERROR statement uses message_id 50000 to raise the error message.
+RAISERROR('Whoops, an error occurred.',1,1)
+
+' severity '
+/* The severity level is an integer between 0 and 25, with each level representing the seriousness of the error.
+
+0–10 Informational messages
+11–18 Errors
+19–25 Fatal errorss
+*/
+
+' state '
+/*
+The state is an integer from 0 through 255. If you raise the same user-defined error at multiple locations, you can use a unique 
+	state number for each location to make it easier to find which section of the code is causing the errors. 
+	For most implementations, you can use 1.
+
+WITH option : 
+The option can be LOG, NOWAIT, or SETERROR:
+
+WITH LOG logs the error in the error log and application log for the instance of the SQL Server Database Engine.
+WITH NOWAIT sends the error message to the client immediately.
+WITH SETERROR sets the ERROR_NUMBER and @@ERROR values to message_id or 50000, regardless of the severity level.
+*/
+
+' SQL Server RAISERROR examples '
+-- A) Using SQL Server RAISERROR with TRY CATCH block example
+
+declare @ErrorMessage nvarchar(150),
+		@ErrorSeverity int,
+		@ErrorState int;
+
+BEGIN TRY
+	RAISERROR('Error occured in try block', 17, 1);
+END TRY
+BEGIN CATCH
+	SELECT @ErrorMessage = ERROR_MESSAGE(),
+			@ErrorSeverity = ERROR_SEVERITY(),
+			@ErrorState = ERROR_STATE();
+
+	-- return the error inside the CATCH block
+	RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+END CATCH
+
+-- B) Using SQL Server RAISERROR statement with a dynamic message text example
+
+DECLARE @MessageText NVARCHAR(100);
+SET @MessageText = N'Cannot delete the sales order %s';
+
+RAISERROR(
+    @MessageText, -- Message text
+    16, -- severity
+    1, -- state
+    N'2001' -- first argument to the message text
+);
+
+/*
+When to use RAISERROR statement: 
+You use the RAISERROR statement in the following scenarios:
+
+Troubleshoot Transact-SQL code.
+Return messages that contain variable text.
+Examine the values of data.
+Cause the execution to jump from a TRY block to the associated CATCH block.
+Return error information from the CATCH block to the callers, either calling batch or application.
+*/
+
+
+' ----- 3. THROW ----- '
+/*
+The THROW statement raises an exception and transfers execution to a CATCH block of a TRY CATCH construct.
+suntax: 
+		THROW [ error_number ,  
+				message ,  
+				state ];
+
+error_number: 
+The error_number is an integer that represents the exception. The error_number must be greater than 50,000 and less than or equal to 2,147,483,647.
+
+message:
+The message is a string of type NVARCHAR(2048) that describes the exception.
+
+state:
+The state is a TINYINT with the value between 0 and 255. The state indicates the state associated with the message.
+
+If you don’t specify any parameter for the THROW statement, you must place the THROW statement inside a CATCH block:
+
+		BEGIN TRY
+			-- statements that may cause errors
+		END TRY
+		BEGIN CATCH
+			-- statement to handle errors 
+			THROW;   
+		END CATCH
+
+In this case, the THROW statement raises the error that was caught by the CATCH block.
+
+Note that the statement before the THROW statement must be terminated by a semicolon (;)
+
+*/
+/* THROW vs. RAISERROR :
+The following table illustrates the difference between the THROW statement and RAISERROR statement:
+
+RAISERROR																		THROW
+The message_id that you pass to RAISERROR must be defined in sys.messages view.	The error_number parameter does not have to be defined in the sys.messages view.
+The message parameter can contain printf formatting styles such as %s and %d.	The message parameter does not accept printf style formatting. Use FORMATMESSAGE() function to substitute parameters.
+The severity parameter indicates the severity of the exception.					The severity of the exception is always set to 16.
+*/
+
+'SQL Server THROW statement examples '
+--  A) Using THROW statement to raise an exception
+
+THROW 50005, N'An Error occured', 1
+
+-- B) Using THROW statement to rethrow an exception
+CREATE TABLE t1(
+    id int primary key
+);
+GO
+
+BEGIN TRY
+	insert into t1(id) values(1);
+	-- cause error
+	insert into t1(id) values(1);
+END TRY
+BEGIN CATCH
+	PRINT ('Raise the caught error again');
+	THROW;
+END CATCH
+
+/*
+Unlike the RAISERROR statement, the THROW statement does not allow you to substitute parameters in the message text. 
+	Therefore, to mimic this function, you use the FORMATMESSAGE() function.
+*/
+
+-- The following statement adds a custom message to the sys.messages catalog view:
+exec sys.sp_addmessage
+	@msgnum = 50010,
+	@severity = 16,
+	@msgtext = N'The order number %s cannot be deleted b/z it doesnot exist.',
+	@lang = 'us_english';
+GO
+
+exec sys.sp_dropmessage @msgnum = 50010, @lang = 'us_english';
+
+declare @MessageText nvarchar(2048);
+set @MessageText = FORMATMESSAGE(50010, N'1001');
+
+THROW 50010, @MessageText, 1;	
+
 
 
 
