@@ -131,6 +131,37 @@ to disk = 'F:\DotNet\DotNetProjects\Database Files\DDL_Database_backup';
 
 drop database if exists DDL_Database
 
+' SQL Server DROP TABLE '
+
+' syntax: DROP TABLE [IF EXISTS]  [database_name.][schema_name.]table_name; 
+
+SQL Server allows you to remove multiple tables at once using a single DROP TABLE statement as follows:
+DROP TABLE [database_name.][schema_name.]table_name_1, [schema_name.]table_name_2, …[schema_name.]table_name_n;
+'
+CREATE SCHEMA procurement;
+GO
+
+create schema procurement;
+CREATE TABLE procurement.supplier_groups (
+    group_id INT IDENTITY PRIMARY KEY,
+    group_name VARCHAR (50) NOT NULL
+);
+
+CREATE TABLE procurement.suppliers (
+    supplier_id INT IDENTITY PRIMARY KEY,
+    supplier_name VARCHAR (50) NOT NULL,
+    group_id INT NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES procurement.supplier_groups (group_id)
+);
+
+select * from procurement.supplier_groups;
+select * from procurement.suppliers;
+
+DROP TABLE procurement.suppliers;
+DROP TABLE procurement.supplier_groups;
+------- OR ---------
+DROP TABLE procurement.suppliers, procurement.supplier_groups;
+
 
 
 
