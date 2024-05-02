@@ -34,6 +34,12 @@ SELECT * FROM DEPARTMENT
 where DEPT_NAME like '[a-o][0-9a-d]%'
 
 -- UPDATE
+'
+UPDATE table_name
+SET c1 = v1, c2 = v2, ... cn = vn
+[WHERE condition]
+'
+
 update DEPARTMENT
 set DEPT_LOC = 'CANADA'
 WHERE DEPT_NO = 20
@@ -50,6 +56,12 @@ VALUES (50,'ACCOUNTING_2','NEW YORK_2'),
 	(70,'SALES_2','CHICAGO_2')
 
 -- DELETE
+' 
+DELETE [ TOP ( expression ) [ PERCENT ] ]  
+FROM table_name
+[WHERE search_condition];
+'
+
 DELETE FROM DEPARTMENT
 WHERE DEPT_NO > 60
 
