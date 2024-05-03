@@ -705,7 +705,7 @@ begin
 	)
 end
 
-drop trigger TrgAuditTableChangesInAllDatabases
+DISABLE trigger TrgAuditTableChangesInAllDatabases
 on all server;
 
 use Test_DDLTrigger_DB1
@@ -716,8 +716,113 @@ drop table test;
 
 select * from Test_DDLTrigger_DB1.dbo.AuditTable;
 
+
+drop trigger TrgAuditTableChangesInAllDatabases
+on all server;
+
 --------------------------------------------
 
+' ======================== 3. SQL Server INSTEAD OF Trigger ========================= '
+/*
+-> An INSTEAD OF trigger is a trigger that allows you to skip an INSERT, DELETE, or UPDATE statement to a table or a view and 
+	execute other statements defined in the trigger instead. The actual insert, delete, or update operation does not occur at all.
+-> In other words, an INSTEAD OF trigger skips a DML statement and execute other statements.
+
+syntax: 
+		CREATE TRIGGER [schema_name.] trigger_name
+		ON {table_name | view_name }
+		INSTEAD OF {[INSERT] [,] [UPDATE] [,] [DELETE] }
+		AS
+		{sql_statements}
+*/
+
+/*
+SQL Server INSTEAD OF trigger example:
+-> A typical example of using an INSTEAD OF trigger is to override an insert, update, or delete operation on a view.
+
+-> Suppose, an application needs to insert new brands into the production.brands table. However, the new brands should be 
+	stored in another table called production.brand_approvals for approval before inserting into the production.brands table.
+
+-> To accomplish this, you create a view called production.vw_brands for the application to insert new brands. 
+	If brands are inserted into the view, an INSTEAD OF trigger will be fired to insert brands into the production.brand_approvals table.
+
+	Application (insert into cw_brands(name) values("new brand"))----> vw_brand (Fire)---->
+		(Insead of Trigger) (INSERT) ----> brand_approval(table) (Approved)----> brands
+
+*/
+
+create schema production;
+
+create table production.brands (
+	brand_id int primary key identity,
+	brand_name varchar(100)
+	);
+
+CREATE TABLE production.brand_approvals(
+    brand_id INT IDENTITY PRIMARY KEY,
+    brand_name VARCHAR(255) NOT NULL
+);
+
+CREATE VIEW production.vw_brands 
+AS
+SELECT
+    brand_name,
+    'Approved' approval_status
+FROM
+    production.brands
+UNION
+SELECT
+    brand_name,
+    'Pending Approval' approval_status
+FROM
+    production.brand_approvals;
+
+--Once a row is inserted into the production.vw_brands view, we need to route it to the production.brand_approvals table 
+--	via the following INSTEAD OF trigger:
+
+CREATE TRIGGER production.trg_vw_brands 
+ON production.vw_brands
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO production.brand_approvals ( 
+        brand_name
+    )
+    SELECT
+        i.brand_name
+    FROM
+        inserted i
+    WHERE
+        i.brand_name NOT IN (
+            SELECT 
+                brand_name
+            FROM
+                production.brands
+        );
+END
+
+--The trigger inserts the new brand name into the production.brand_approvals if the brand name does not exist in the production.brands.
+
+-- Testing ---
+INSERT INTO production.vw_brands(brand_name)
+VALUES('Eddy Merckx');
+
+--This INSERT statement fired the INSTEAD OF trigger to insert a new row into the production.brand_approvals table.
+
+--If you query data from the production.vw_brands table, you will see a new row appear:
+
+SELECT
+	brand_name,
+	approval_status
+FROM
+	production.vw_brands;
+
+-- The following statement shows the contents of the production.brand_approvals table:
+
+SELECT * from production.brand_approvals;
+
+	
 
 
 
