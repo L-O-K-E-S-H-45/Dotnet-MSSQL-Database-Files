@@ -515,6 +515,8 @@ BEGIN
 END;
 GO
 
+drop trigger trg_index_changes on database;
+
 -- In the body of the trigger, we used the EVENTDATA() function that returns the information about 
 --	server or database events. The function is only available inside DDL or logon trigger.
 
@@ -543,7 +545,7 @@ SELECT * FROM index_logs;
 create database Test_DDLTrigger_Database;
 use Test_DDLTrigger_Database;
 
-create table test ( int int );
+create table test ( id int );
 
 use Test_DDLTrigger_Database
 go
@@ -578,6 +580,8 @@ add name varchar(50);
 -- or 
 drop table test;
 
+drop trigger TrgPreventCreateTable on database;
+
 /*
 1. DDL_TABL_EVENTS, 2. DDL_PROCEDURE_EVENTS 3. DDL_ROLE_EVENTS, 4. DDL_FUNCTINS_EVENTS
 create/alter/drop_Table/Procedures/Role/Functions
@@ -601,6 +605,10 @@ drop table test;
 
 ' o/p: You cannot createn or alter or drop a table in this database '
 
+drop trigger TrgEventGroup on database;
+
+drop table test;
+
 ' Use of Event Groups on Server Level '
 create trigger TrgServerAll
 on All Server
@@ -617,7 +625,7 @@ create database Test_DDLTrigger_DB3;
 
 use Test_DDLTrigger_DB1
 go
-create table test(var int);
+create table test(id int);
 --- or ---
 use Test_DDLTrigger_DB2
 go
@@ -628,6 +636,14 @@ go
 create table test(id int);
 
 ' o/p: You cannot create, alter, drop table in any database '
+
+drop trigger TrgServerAll on all server;
+
+use Test_DDLTrigger_DB2
+go
+create table test(id int);
+
+' o/p: Commands completed successfully. '
 
 
 ' --------------------- Track Schema Changes Event (Audit Trigger) -------------------- '
@@ -672,28 +688,25 @@ select * from AuditTable;
 
 create trigger TrgAuditTableChangesInAllDatabases
 on all server
-for create_table,alter_table,drop_table
+for CREATE_TABLE,ALTER_TABLE,DROP_TABLE
 as
 begin
-	declare @EventData XML
+	declare @EventData XML;
 	select @EventData = EVENTDATA();
-	insert into Test_DDLTrigger_DB1.AuditTable(DatabaseName,TableName,EventType,LoginName,SQLCommand,AuditDateTime)
+
+	insert into Test_DDLTrigger_DB1.dbo.AuditTable(DatabaseName,TableName,EventType,LoginName,SQLCommand,AuditDateTime)
 	values (
-	@EventData.value('(/Event_Instance/DatabaseName)[1]', 'varchar(250)'),
-	@EventData.value('(/Event_Instance/ObjectName)[1]', 'varchar(250)'),
-	@EventData.value('(/Event_Instance/EventType)[1]', 'nvarchar(250)'),
-	@EventData.value('(/Event_Instance/LoginName)[1]', 'varchar(250)'),
-	@EventData.value('(/Event_Instance/TSQLCommand)[1]', 'nvarchar(250)'),
+	@EventData.value('(/EVENT_INSTANCE/DatabaseName)[1]', 'varchar(250)'),
+	@EventData.value('(/EVENT_INSTANCE/ObjectName)[1]', 'varchar(250)'),
+	@EventData.value('(/EVENT_INSTANCE/EventType)[1]', 'nvarchar(250)'),
+	@EventData.value('(/EVENT_INSTANCE/LoginName)[1]', 'varchar(250)'),
+	@EventData.value('(/EVENT_INSTANCE/TSQLCommand)[1]', 'nvarchar(2500)'),
 	GETDATE()
 	)
 end
 
---  **************** pending(not getting output)
-
 drop trigger TrgAuditTableChangesInAllDatabases
 on all server;
-
-create table tt(id int);
 
 use Test_DDLTrigger_DB1
 go
@@ -701,9 +714,10 @@ create table test(id int)
 
 drop table test;
 
+select * from Test_DDLTrigger_DB1.dbo.AuditTable;
+
 --------------------------------------------
 
-create table  t(id int)
 
 
 
