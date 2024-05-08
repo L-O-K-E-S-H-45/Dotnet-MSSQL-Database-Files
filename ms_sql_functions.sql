@@ -434,7 +434,7 @@ values (15000,'mobile','2024-04-12'),
 
 select * from sales
 
-select *, DATEPART(QUARTER,sold_date), DATEPART(QUARTER,GETDATE()), DATEPART(YEAR, sold_date), DATEPART(YEAR, GETDATE())
+select *, DATEPART(QUARTER,sold_date), DATEPART(QUARTER,GETDATE()), DATEPART(YEAR, sold_date), DATEPART(YEAR, GETDATE()) from sales;
 -- ---- or 
 select *, DATEPART(QUARTER,sold_date), DATEPART(QUARTER,GETDATE()), YEAR(sold_date), YEAR(GETDATE()) from sales
 
@@ -645,7 +645,7 @@ return select *, (Science+Math+English) Total_Marks from Students_Marks where (S
 
 drop function Inline_GetStudents_GreaterThanScore;
 
-select *from dbo.Inline_GetStudents_GreaterThanScore(150);
+select * from dbo.Inline_GetStudents_GreaterThanScore(150);
 
 
 ' 1. MULTI-STATEMENT TABLE VALUED FUNCTION '
@@ -674,7 +674,42 @@ drop function MultiStatement_GetStudents;
 
 select * from dbo.MultiStatement_GetStudents(2);
 
+--------------------------------
 
+select * from employees
+
+create function GetAvgSalary(@deptno int)
+returns int
+as
+begin
+	declare @Result int;
+	select @Result = AVG(sal) from employees where DEPT_NO = @deptno;
+	return @Result;
+end;
+
+select dbo.GetAvgSalary(10);
+select dbo.GetAvgSalary(20);
+select dbo.GetAvgSalary(30);
+
+alter function GetSalarySum(@deptno  int)
+returns int
+as
+begin
+	declare  @Result int;
+	select @Result = SUM(sal) from employees where DEPT_NO = @deptno;
+	return @REsult;
+end
+
+select dbo.GetSalarySum(10);
+select dbo.GetSalarySum(20);
+select dbo.GetSalarySum(30);
+
+select SUM(sal)  from employees where DEPT_NO = 10;
+select SUM(sal)  from employees where DEPT_NO = 20;
+select SUM(sal)  from employees where DEPT_NO = 30;
+
+select DEPT_NO, dbo.GetSalarySum(DEPT_NO) as sum_salary, dbo.GetAvgSalary(DEPT_NO) as avg_salary from employees
+group by DEPT_NO;
 
 
 

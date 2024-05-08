@@ -255,6 +255,28 @@ update Employees set Emp_sal = 15000 where Emp_id = 12
 select * from Employee_History;
 select * from Employees;
 
+--------------------
+-- Create an UsersAuditTable to store changes
+--Create Table UsersAuditTable(
+--    AuditId int Primary Key Identity(1,1),
+--    UserId int,
+--    OldData nvarchar(max),
+--    NewData nvarchar(max),
+--    UpdateDate datetime Default GetDate()
+--);
+
+--Create Trigger trg_AuditUserUpdate
+--On Users
+--After Update
+--As
+--Begin
+--    Insert Into UsersAuditTable (UserId, OldData, NewData)
+--    select deleted.UserId, deleted.UserData, inserted.UserData
+--    from inserted
+--    inner join deleted on inserted.UserId = deleted.UserId;
+--end
+--------------------
+
 '---- AFTER DELETE ---- '
 
 create table Employee_Backup (
@@ -583,7 +605,7 @@ drop table test;
 drop trigger TrgPreventCreateTable on database;
 
 /*
-1. DDL_TABL_EVENTS, 2. DDL_PROCEDURE_EVENTS 3. DDL_ROLE_EVENTS, 4. DDL_FUNCTINS_EVENTS
+1. DDL_TABL_EVENTS, 2. DDL_PROCEDURE_EVENTS 3. DDL_ROLE_EVENTS, 4. DDL_FUNCTIONS_EVENTS
 create/alter/drop_Table/Procedures/Role/Functions
 */
 
