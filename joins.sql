@@ -3,6 +3,8 @@
 
 create database JOINS_Database
 
+use JOINS_Database
+
 SELECT * FROM DQL_Database.dbo.EMPLOYEES
 SELECT * FROM DQL_Database.dbo.DEPARTMENT
 
