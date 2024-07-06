@@ -20,7 +20,7 @@ SELECT * FROM JOINS_Database.dbo.EMPLOYEES
 SELECT * FROM JOINS_Database.dbo.DEPARTMENT
 
 -- ===============================================
-' SQL Server joins allow us to combine data from two tables. '
+' SQL Server joins allow us to combine data from two or more tables. '
 
 CREATE SCHEMA hr;
 GO
